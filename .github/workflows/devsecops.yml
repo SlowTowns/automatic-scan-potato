@@ -34,3 +34,4 @@ jobs:
           # Fail only on High severity alerts options
           fail_action: true 
           allow_issue_writing: false
+          artifact_name: 'zap-report-html'
