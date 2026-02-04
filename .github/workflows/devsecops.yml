@@ -5,6 +5,10 @@ on: [push]
 jobs:
   build-secure:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Crucial para el panel de seguridad
+      issues: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
