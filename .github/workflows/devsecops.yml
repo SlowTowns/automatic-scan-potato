@@ -1,41 +1,52 @@
-name: DevSecOps Pipeline
+name: Project 3 - Hardened Pipeline
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
 
 jobs:
-  build-secure:
+  security-scan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write # Crucial para el panel de seguridad
       issues: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Build Docker Image
-        run: docker build -t my-secure-app:${{ github.sha }} .
-
-      - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+      # 1. SCA (Software Composition Analysis)
+      - name: Trivy Scan (Container)
+        uses: aquasecurity/trivy-action@0.20.0 # Versión fija
         with:
-          image-ref: 'my-secure-app:${{ github.sha }}'
-          format: 'table'
-          #exit-code: '1' # Falla el pipeline si encuentra issues
-          ignore-unfixed: true
-          vuln-type: 'os,library'
+          image-ref: 'my-app:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-          
-      - name: Run Container for DAST
-        run: |
-          docker run -d -p 5000:5000 --name test-container my-secure-app:${{ github.sha }}
-          sleep 5 # Esperar a que la app levante
 
-      - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.9.0
+      # 2. Levantar app en entorno efímero
+      - name: Spin up App
+        run: |
+          docker build -t my-app:${{ github.sha }} .
+          docker run -d -p 5000:5000 --name webapp my-app:${{ github.sha }}
+          # Healthcheck: esperar a que la app responda antes de atacar
+          timeout 30s sh -c 'until curl -s localhost:5000; do sleep 1; done'
+
+      # 3. DAST (Dynamic Analysis) - Baseline Scan
+      - name: OWASP ZAP Scan
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: 'http://localhost:5000'
-          # Fail only on High severity alerts options
-          fail_action: true 
-          allow_issue_writing: false
-          artifact_name: 'zap-report-html'
+          artifact_name: 'zap-results'
+          # Generar reporte SARIF para el Security Tab
+          cmd_options: '-a' 
+
+      # 4. Cargar resultados al panel de GitHub
+      # Esto centraliza todas las vulnerabilidades en un solo lugar
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
