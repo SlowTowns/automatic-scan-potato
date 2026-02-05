@@ -5,6 +5,10 @@ on: [push]
 jobs:
   build-secure:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read      # Solo lectura para el código
+      security-events: write # Permite subir resultados al panel de seguridad de GitHub
+      issues: write       # Solo si quieres que ZAP cree issues automáticamente
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -32,6 +36,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.9.0
         with:
           target: 'http://localhost:5000'
+          token: ${{ secrets.GITHUB_TOKEN }}
           # Fail only on High severity alerts options
           fail_action: true 
           allow_issue_writing: true
