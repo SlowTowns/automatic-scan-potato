@@ -29,8 +29,6 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Container for DAST
-        # Nota: Si tu app tarda en levantar, 5 segundos puede ser poco.
-        # Considera usar 'curl' en un loop para esperar hasta que responda.
         run: |
           docker run -d --network host --name test-container my-secure-app:${{ github.sha }}
           sleep 10 
@@ -38,9 +36,7 @@ jobs:
       - name: OWASP ZAP Baseline Scan  
         uses: zaproxy/action-baseline@v0.15.0  
         with:  
-          target: 'http://localhost:5000'  
-          # AQUÍ ESTÁ LA MAGIA:  
-          # En lugar de secrets.GITHUB_TOKEN, usamos el token generado por la App  
+          target: 'http://localhost:5000'    
           token: ${{ steps.app-token.outputs.token }}  
           fail_action: true   
           cmd_options: |
