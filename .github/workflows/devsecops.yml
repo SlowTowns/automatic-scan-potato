@@ -34,4 +34,4 @@ jobs:
           target: 'http://localhost:5000'
           # Fail only on High severity alerts options
           fail_action: true 
-          allow_issue_writing: false
+          allow_issue_writing: true
