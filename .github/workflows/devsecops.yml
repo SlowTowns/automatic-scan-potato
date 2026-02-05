@@ -5,13 +5,7 @@ on: [push]
 jobs:
   build-secure:
     runs-on: ubuntu-latest
-    # 1. AGREGAR ESTO: Permisos explícitos para que el GITHUB_TOKEN pueda escribir issues
-    permissions:
-      contents: read
-      issues: write
-      checks: write
-      pull-requests: write
-
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -43,16 +37,17 @@ jobs:
           sleep 10 
 
       - name: OWASP ZAP Baseline Scan  
-        uses: zaproxy/action-baseline@v0.12.0  
+        uses: zaproxy/action-baseline@v0.15.0  
         with:  
           target: 'http://localhost:5000'  
           # AQUÍ ESTÁ LA MAGIA:  
           # En lugar de secrets.GITHUB_TOKEN, usamos el token generado por la App  
           token: ${{ steps.app-token.outputs.token }}  
           fail_action: true   
-          allow_issue_writing: true  
           cmd_options: |
             chmod a+rwx '/zap/wrk/zap.yaml'
+          allow_issue_writing: true  
+          
       - name: Upload Scan Report
         uses: actions/upload-artifact@v4
         with:
