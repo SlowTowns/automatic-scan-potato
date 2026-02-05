@@ -5,10 +5,13 @@ on: [push]
 jobs:
   build-secure:
     runs-on: ubuntu-latest
+    # 1. AGREGAR ESTO: Permisos explícitos para que el GITHUB_TOKEN pueda escribir issues
     permissions:
-      contents: read      # Solo lectura para el código
-      security-events: write # Permite subir resultados al panel de seguridad de GitHub
-      issues: write       # Solo si quieres que ZAP cree issues automáticamente
+      contents: read
+      issues: write
+      checks: write
+      pull-requests: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,22 +24,28 @@ jobs:
         with:
           image-ref: 'my-secure-app:${{ github.sha }}'
           format: 'table'
-          #exit-code: '1' # Falla el pipeline si encuentra issues
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-# ... (Pasos anteriores de Build y Trivy)
 
       - name: Run Container for DAST
+        # Nota: Si tu app tarda en levantar, 5 segundos puede ser poco.
+        # Considera usar 'curl' en un loop para esperar hasta que responda.
         run: |
-          docker run -d -p 5000:5000 --name test-container my-secure-app:${{ github.sha }}
-          sleep 5 # Esperar a que la app levante
+          docker run -d --network host --name test-container my-secure-app:${{ github.sha }}
+          sleep 10 
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.9.0
         with:
+          # 2. CAMBIO RECOMENDADO: Usar localhost con --network host arriba
+          # O usar la IP del bridge si no usas --network host.
           target: 'http://localhost:5000'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # Fail only on High severity alerts options
+          
+          # 3. AGREGAR ESTO: Es obligatorio para allow_issue_writing
+          token: ${{ secrets.GITHUB_TOKEN }} 
+          
           fail_action: true 
           allow_issue_writing: true
+          # 4. OPCIONAL: Define un nombre de artefacto válido explícitamente
+          artifact_name: 'zap-scan-report'
